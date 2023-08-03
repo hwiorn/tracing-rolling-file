@@ -44,6 +44,7 @@ pub enum RollingFrequency {
     EveryDay,
     EveryHour,
     EveryMinute,
+    EveryNMinute(u32),
 }
 
 impl RollingFrequency {
@@ -51,13 +52,18 @@ impl RollingFrequency {
     /// different files.
     pub fn equivalent_datetime(&self, dt: &DateTime<Local>) -> DateTime<Local> {
         match self {
-            RollingFrequency::EveryDay => Local.ymd(dt.year(), dt.month(), dt.day()).and_hms(0, 0, 0),
-            RollingFrequency::EveryHour => Local.ymd(dt.year(), dt.month(), dt.day()).and_hms(dt.hour(), 0, 0),
-            RollingFrequency::EveryMinute => {
-                Local
-                    .ymd(dt.year(), dt.month(), dt.day())
-                    .and_hms(dt.hour(), dt.minute(), 0)
-            },
+            RollingFrequency::EveryDay => Local
+                .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), 0, 0, 0)
+                .unwrap(),
+            RollingFrequency::EveryHour => Local
+                .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), dt.hour(), 0, 0)
+                .unwrap(),
+            RollingFrequency::EveryMinute => Local
+                .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), 0)
+                .unwrap(),
+            RollingFrequency::EveryNMinute(m) => Local
+                .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), dt.hour(), (dt.minute() / m) * m, 0)
+                .unwrap(),
         }
     }
 }

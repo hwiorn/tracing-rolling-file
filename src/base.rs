@@ -52,6 +52,12 @@ impl RollingConditionBase {
         self
     }
 
+    /// Sets a condition to rollover when the date or minute changes
+    pub fn minutely_with_x(mut self, every_x: u32) -> RollingConditionBase {
+        self.frequency_opt = Some(RollingFrequency::EveryNMinute(every_x));
+        self
+    }
+
     /// Sets a condition to rollover when a certain size is reached
     pub fn max_size(mut self, x: u64) -> RollingConditionBase {
         self.max_size_opt = Some(x);
@@ -195,6 +201,39 @@ mod test {
     #[test]
     fn frequency_every_minute() {
         let mut c = build_context(RollingConditionBase::new().frequency(RollingFrequency::EveryMinute), 9);
+        c.rolling
+            .write_with_datetime(b"Line 1\n", &Local.ymd(2021, 3, 30).and_hms(1, 2, 3))
+            .unwrap();
+        c.rolling
+            .write_with_datetime(b"Line 2\n", &Local.ymd(2021, 3, 30).and_hms(1, 2, 3))
+            .unwrap();
+        c.rolling
+            .write_with_datetime(b"Line 3\n", &Local.ymd(2021, 3, 30).and_hms(1, 2, 4))
+            .unwrap();
+        c.rolling
+            .write_with_datetime(b"Line 4\n", &Local.ymd(2021, 3, 30).and_hms(1, 3, 0))
+            .unwrap();
+        c.rolling
+            .write_with_datetime(b"Line 5\n", &Local.ymd(2021, 3, 30).and_hms(2, 3, 0))
+            .unwrap();
+        c.rolling
+            .write_with_datetime(b"Line 6\n", &Local.ymd(2022, 3, 30).and_hms(2, 3, 0))
+            .unwrap();
+        assert!(!AsRef::<Path>::as_ref(&c.rolling.filename_for(4)).exists());
+        c.verify_contains("Line 1", 3);
+        c.verify_contains("Line 2", 3);
+        c.verify_contains("Line 3", 3);
+        c.verify_contains("Line 4", 2);
+        c.verify_contains("Line 5", 1);
+        c.verify_contains("Line 6", 0);
+    }
+
+    #[test]
+    fn frequency_every_5_minute() {
+        let mut c = build_context(
+            RollingConditionBase::new().frequency(RollingFrequency::EveryNMinute(5)),
+            9,
+        );
         c.rolling
             .write_with_datetime(b"Line 1\n", &Local.ymd(2021, 3, 30).and_hms(1, 2, 3))
             .unwrap();
